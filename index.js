@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const morgan = require('morgan')
 const userModel = require('./models/user');
 const taskModel = require('./models/task');
+var ObjectId = require('mongodb').ObjectId;
 
 //setup express app
 const app = express();
@@ -24,7 +25,7 @@ mongoose.connect(mongoDBUri)
 app.use(express.json())
 
 // 1. signup
-app.post('/signup', (req,res)=> {
+app.post('/signup',async (req,res)=> {
     const data = req.body
 
     // if data is okay:
@@ -34,23 +35,32 @@ app.post('/signup', (req,res)=> {
         })
         return
     }
-
-    // saving data
-    const newUser = new userModel({
+    // if duplicate
+    const exisitingUser = await userModel.findOne({
         email: data.email,
         name: data.name,
         password: data.password
     })
-    
-    newUser.save()
-        .then(
-            res.status(200).json({
-                message: 'User created successfully'
-            })
-        )
-        .catch(err => {
-            console.log(err);
+    if(!exisitingUser){       
+        // saving data
+        const newUser = new userModel({
+             email: data.email,
+             name: data.name,
+             password: data.password
         })
+        await newUser.save()
+        res.status(200).json({
+            message:'User created successfully'
+        })
+        return
+        }
+    else{
+        res.status(400).json({
+            message: 'user already exists'
+        })
+    }
+    
+
 })
 
 // 2. login
@@ -118,7 +128,8 @@ app.post('/addTask', async (req, res) => {
             )
             .catch(err => {
                 res.status(500).json({
-                    message: 'internal server error'
+                    message: 'internal server error',
+                    error: err
                 })
             })
     }
@@ -131,10 +142,11 @@ app.post('/addTask', async (req, res) => {
     
 })
 
+
 // 4. update task API
 app.put('/update/:id', async (req, res) => {
     const data = req.body
-    const id = req.body.id
+    const id = req.params.id
     try{
         await taskModel.findByIdAndUpdate(id, {
             name: data.name,
@@ -148,11 +160,27 @@ app.put('/update/:id', async (req, res) => {
         })
     }catch(err){
         res.status(500).json({
-            message:"internal server error",
+            message:"task not found",
             err: err
         })
     }
     
+})
+
+// 5. delete task API
+app.delete('/deletetask/:id',async (req,res) =>{
+    const id = req.params.id
+    const mongoId = new ObjectId(id)
+    const task = await taskModel.findById(id)
+    if(!task){
+        res.status(400).json({
+            message:"task doesn't exist"
+        })       
+    }
+    await taskModel.deleteOne({_id: mongoId})
+    res.status(200).json({
+        message:'task deleted successfully'
+    })
 })
 
 // 6. get all tasks API
