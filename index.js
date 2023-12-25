@@ -170,17 +170,19 @@ app.put('/update/:id', async (req, res) => {
 // 5. delete task API
 app.delete('/deletetask/:id',async (req,res) =>{
     const id = req.params.id
-    const mongoId = new ObjectId(id)
-    const task = await taskModel.findById(id)
-    if(!task){
-        res.status(400).json({
-            message:"task doesn't exist"
-        })       
+    try{
+        await taskModel.findByIdAndDelete(id)
+        res.status(200).json({
+            message:'task deleted successfully'
+        })
+        return
+    }catch(err){
+        res.json({
+            error: err
+        })
     }
-    await taskModel.deleteOne({_id: mongoId})
-    res.status(200).json({
-        message:'task deleted successfully'
-    })
+    
+    
 })
 
 // 6. get all tasks API
