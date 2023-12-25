@@ -131,45 +131,86 @@ app.post('/addTask', async (req, res) => {
     
 })
 
-//4. Update task API
-// app.put('/Update/:id', async (req,res) => {
-//     const data = req.body
-//     console.log(data)
-//     const exisitingTask = await taskModel.findById(req.params.id)
-//     if(!exisitingTask){
-//         res.status(400).json({
-//             message:'no such task exists'
-//         })
-//     }
-//     else{
-//         updateTask = await userModel.findByIdAndUpdate(req.params.id, data)
-//     }
-// })
+// 4. update task API
+app.put('/update/:id', async (req, res) => {
+    const data = req.body
+    const id = req.body.id
+    try{
+        await taskModel.findByIdAndUpdate(id, {
+            name: data.name,
+            time: data.time,
+            date: data.date,
+            createdBy: data.createdBy,
+            isCompleted: data.isCompleted
+        })
+        res.status(200).json({
+            message:"task updated successfully"
+        })
+    }catch(err){
+        res.status(500).json({
+            message:"internal server error",
+            err: err
+        })
+    }
+    
+})
 
 // 6. get all tasks API
-app.get('/alltasks', (req,res) => {
-    taskModel.find()
-        .then((result) => {
-            res.json(result)
+app.get('/alltasks', async (req,res) => {
+    
+    try{
+        const task = await taskModel.find()
+        if(task.length == 0){
+            res.status(400).json({
+                message:"no tasks found"
+            })
+        }
+        res.status(200).json(task)
+    }catch(err){
+        res.status(500).json({
+            message:"internal server error"
         })
-        .catch(err => {
-            res.json(err)
-        })
+    }
         
 })
 
 // 7. get single task API
-app.get('/singletask', (req,res) => {
+app.get('/singletask',async (req,res) => {
     const id = req.body.id
-    taskModel.findById(id)
-        .then((result) => {
-            res.json(result)
+
+    var objectId =  new mongoose.Types.ObjectId(id);
+
+    try{
+        const task = await taskModel.findById(id);
+    if(!task){
+        res.status(404).json({
+            message: "task not found"
         })
-        .catch(err => res.json(err))
+        return
+    }
+    res.status(200).json({
+        message:"Successfully recieved task by taskID",
+        task: task
+    })       
+    }catch(err){
+        res.json({ error : "task not found"})
+    }
 })
 
+
 // 8. get all task of a user
-app.get('/task-user', (req,res) => {
+app.get('/task-user', async (req,res) => {
     const user = req.body.user
-    taskModel.find(createdBy)
+    try{
+        const task = await taskModel.find({createdBy: user})
+        if(task.length == 0){
+            res.status(400).json({
+                message:"user not found"
+            })
+        }res.status(200).json(task)
+    }catch(err) {
+        res.json(err)
+    }
 })
+
+       
