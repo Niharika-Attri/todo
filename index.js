@@ -8,6 +8,8 @@ var ObjectId = require('mongodb').ObjectId;
 //setup express app
 const app = express();
 
+app.set('view engine', 'ejs');
+
 app.use(morgan('dev')); 
 
 const username = 'niharikaattri2005';
@@ -24,15 +26,21 @@ mongoose.connect(mongoDBUri)
 
 app.use(express.json())
 
+app.use(express.urlencoded({extended: true})); 
+
+app.get('/', (req, res) => {
+    res.render('index')
+})
+app.get('/signup', (req, res) => {
+    res.render('signup')
+})
 // 1. signup
 app.post('/signup',async (req,res)=> {
     const data = req.body
 
     // if data is okay:
     if( data.email === undefined || data.name === undefined || data.password === undefined){
-        res.status(400).json({  // status code 400: the server cannot or will not process the request due to something that is perceived to be a client error
-            message: 'Please provide email, name and password'
-        })
+        res.status(400).send("Please provide email, name and password")
         return
     }
     // if duplicate
@@ -49,15 +57,11 @@ app.post('/signup',async (req,res)=> {
              password: data.password
         })
         await newUser.save()
-        res.status(200).json({
-            message:'User created successfully'
-        })
+        res.status(200).redirect('/')
         return
         }
     else{
-        res.status(400).json({
-            message: 'user already exists'
-        })
+        res.status(400).send('user already exists')
     }
     
 
