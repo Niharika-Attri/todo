@@ -193,7 +193,23 @@ app.delete('/deletetask/:id',async (req,res) =>{
 app.get('/alltasks', async (req,res) => {
     
     try{
-        const task = await taskModel.find()
+        const excludeFields = ['sort', 'page', 'limit', 'fields'];
+
+        const queryObj = {...req.query};
+
+        excludeFields.forEach((el)=>{
+            delete queryObj[el]
+        })
+        
+        const task = await taskModel.find(queryObj);
+        // const task = await taskModel.find(req.query);//=====filter using query parameters
+        // does not work if fields like sort or page are provided => exclude fields is created
+   
+
+
+        // const task = await taskModel.find()// using mongoose method
+        //             .where('name')
+        //             .equals(req.query.name)
         if(task.length == 0){
             res.status(400).json({
                 message:"no tasks found"
