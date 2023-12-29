@@ -193,23 +193,28 @@ app.delete('/deletetask/:id',async (req,res) =>{
 app.get('/alltasks', async (req,res) => {
     
     try{
-        const excludeFields = ['sort', 'page', 'limit', 'fields'];
+        // const excludeFields = ['sort', 'page', 'limit', 'fields'];
 
-        const queryObj = {...req.query};
+        // const queryObj = {...req.query};
 
-        excludeFields.forEach((el)=>{
-            delete queryObj[el]
-        })
-        
+        // excludeFields.forEach((el)=>{
+        //     delete queryObj[el]
+        // })
+
+        let queryStr = JSON.stringify(req.query) //== to convert to string
+        queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`) // \b so only exacg match to these replace, g so all ocuurences replace and not only first
+        const queryObj = JSON.parse(queryStr);
         const task = await taskModel.find(queryObj);
         // const task = await taskModel.find(req.query);//=====filter using query parameters
         // does not work if fields like sort or page are provided => exclude fields is created
-   
+        // advance filtering================
+        //.find({price: { $gte 20}})
+        //localhost:3000/alltasks?price[gte]=20=====> returns object without $ sign
 
 
         // const task = await taskModel.find()// using mongoose method
         //             .where('name')
-        //             .equals(req.query.name)
+        //             .equals(req.query.name) OR gte()
         if(task.length == 0){
             res.status(400).json({
                 message:"no tasks found"
