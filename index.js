@@ -193,23 +193,36 @@ app.delete('/deletetask/:id',async (req,res) =>{
 app.get('/alltasks', async (req,res) => {
     
     try{
-        // const excludeFields = ['sort', 'page', 'limit', 'fields'];
+        const excludeFields = ['sort', 'page', 'limit', 'fields'];
 
-        // const queryObj = {...req.query};
+        let queryObj = {...req.query};
 
-        // excludeFields.forEach((el)=>{
-        //     delete queryObj[el]
-        // })
+        excludeFields.forEach((el)=>{
+            delete queryObj[el]
+        })
 
-        let queryStr = JSON.stringify(req.query) //== to convert to string
+        let queryStr = JSON.stringify(queryObj) //== to convert to string
         queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`) // \b so only exacg match to these replace, g so all ocuurences replace and not only first
-        const queryObj = JSON.parse(queryStr);
-        const task = await taskModel.find(queryObj);
+        queryObj = JSON.parse(queryStr);
+        let query = await taskModel.find(queryObj);
         // const task = await taskModel.find(req.query);//=====filter using query parameters
         // does not work if fields like sort or page are provided => exclude fields is created
         // advance filtering================
         //.find({price: { $gte 20}})
         //localhost:3000/alltasks?price[gte]=20=====> returns object without $ sign
+
+        //sorting
+        if(req.query.sort){
+            // for multiple sort=> seperate by comma in url
+            // for converting commas to space
+            const sortBy = req.query.sort.split(',').join(' ');//=======> .split() returns an array => .join(' ')
+            query = query.sort(sortBy)
+            // .sort('price' 'ratings') ======>specify when sorting for two or more 
+        }else{
+            // query = query.sort('date')// by default sort if not specified
+            query
+        }
+        const task = await query;
 
 
         // const task = await taskModel.find()// using mongoose method
@@ -223,7 +236,8 @@ app.get('/alltasks', async (req,res) => {
         res.status(200).json(task)
     }catch(err){
         res.status(500).json({
-            message:"internal server error"
+            message:"internal server error",
+            error: err
         })
     }
         
