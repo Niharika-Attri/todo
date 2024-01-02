@@ -5,6 +5,9 @@ const userModel = require('./models/user');
 const taskModel = require('./models/task');
 const taskSchema = require('./models/task');
 var ObjectId = require('mongodb').ObjectId;
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
 
 //setup express app
 const app = express();
@@ -27,42 +30,50 @@ mongoose.connect(mongoDBUri)
 
 app.use(express.json())
 
-app.use(express.urlencoded({extended: true})); 
+// app.use(express.urlencoded({extended: true})); 
 
-app.get('/', (req, res) => {
-    res.render('index')
-})
-app.get('/signup', (req, res) => {
-    res.render('signup')
-})
+// app.get('/', (req, res) => {
+//     res.render('index')
+// })
+// app.get('/signup', (req, res) => {
+//     res.render('signup')
+// })
 // 1. signup
 app.post('/signup',async (req,res)=> {
     const data = req.body
 
+    // auth
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    console.log(hashedPassword);
+
     // if data is okay:
     if( data.email === undefined || data.name === undefined || data.password === undefined){
-        res.status(400).send("Please provide email, name and password")
+        res.status(400).json({
+            message: 'please provide email, name, password'
+        })
         return
     }
     // if duplicate
     const exisitingUser = await userModel.findOne({
         email: data.email,
         name: data.name,
-        password: data.password
+        password: hashedPassword
     })
     if(!exisitingUser){       
         // saving data
         const newUser = new userModel({
              email: data.email,
              name: data.name,
-             password: data.password
+             password: hashedPassword
         })
         await newUser.save()
-        res.status(200).redirect('/')
+        res.status(200).json({ message: 'user signed in'})
         return
         }
     else{
-        res.status(400).send('user already exists')
+        res.status(400).json({
+            message: 'user already exists'
+        })
     }
     
 
@@ -71,6 +82,7 @@ app.post('/signup',async (req,res)=> {
 // 2. login
 app.post('/login', async (req, res) => {
     const data = req.body
+    const password = data.password
 
     // if data is okay
     if( data.email === undefined || data.password ===undefined){
@@ -81,19 +93,32 @@ app.post('/login', async (req, res) => {
     }
 
     // login if user in db
-    const exisitingUser = await userModel.findOne({
-        email:data.email,
-        password: data.password
-    })
-    if (!exisitingUser){
-        res.status(404).json({
-            message:'invalid email or password'
+    try{
+        const exisitingUser = await userModel.findOne({
+            email:data.email,
+            
         })
-    }else{
-        res.status(200).json({
-            message: 'User logged in successfully'
-        })
+        if (!exisitingUser){
+            res.status(404).json({
+                message:'invalid email'
+            })
+        }
+        const passwordMatch = await bcrypt.compare(password, exisitingUser.password);
+        if(!passwordMatch){
+            res.status(401).json({
+                message: 'authentication failed'
+            })
+        }else{
+            res.status(200).json({
+                message: 'successfully logged in'
+            })
+        }
+        const token = jwt.sign({ userId:exisitingUser._id}, 'your-secret-key', {expiresIn:'1h',});
+        // res.status(200).json({token});
+    }catch(err){
+        res.status(500).json({error: 'login failed'})
     }
+    
 })
 
 // 3. Create task API
@@ -286,4 +311,7 @@ app.get('/task-user', async (req,res) => {
     }
 })
 
-       
+// auth middleware
+function verifyToken(req, res, next){
+    const token = req.header('Authorization')
+}
