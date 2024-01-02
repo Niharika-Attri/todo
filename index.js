@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const morgan = require('morgan')
 const userModel = require('./models/user');
 const taskModel = require('./models/task');
+const taskSchema = require('./models/task');
 var ObjectId = require('mongodb').ObjectId;
 
 //setup express app
@@ -99,9 +100,9 @@ app.post('/login', async (req, res) => {
 app.post('/addTask', async (req, res) => {
     const data = req.body
 
-    if( data.name === undefined || data.time === undefined || data.date === undefined || data.createdBy === undefined || data.isCompleted === undefined){
+    if( data.name === undefined || data.time === undefined || data.date === undefined || data.createdBy === undefined || data.isCompleted === undefined || data.number === undefined){
         res.status(400).json({
-            message: 'Please provide name, time, date, status, createdBy'
+            message: 'Please provide name, time, date, status, createdBy, number'
         })
         return
     }
@@ -111,7 +112,8 @@ app.post('/addTask', async (req, res) => {
         time: data.time,
         date: data.date,
         createdBy: data.createdBy,
-        isCompleted: data.isCompleted
+        isCompleted: data.isCompleted,
+        number: data.number
     })
 
     if(!exisitingTask){
@@ -121,7 +123,8 @@ app.post('/addTask', async (req, res) => {
             time: data.time,
             date: data.date,
             createdBy: data.createdBy,
-            isCompleted: data.isCompleted
+            isCompleted: data.isCompleted,
+            number: data.number
         })
          
         newTask.save()
@@ -240,14 +243,15 @@ app.get('/alltasks', async (req,res) => {
             error: err
         })
     }
+   
         
 })
 
 // 7. get single task API
-app.get('/singletask',async (req,res) => {
-    const id = req.body.id
+app.get('/singletask/:id',async (req,res) => {
+    const id = req.params.id
 
-    var objectId =  new mongoose.Types.ObjectId(id);
+    // var objectId =  new mongoose.Types.ObjectId(id);
 
     try{
         const task = await taskModel.findById(id);
