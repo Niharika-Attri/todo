@@ -56,9 +56,8 @@ app.post('/signup',async (req,res)=> {
     // if duplicate
     const exisitingUser = await userModel.findOne({
         email: data.email,
-        name: data.name,
-        password: hashedPassword
-    })
+        name: data.name})
+
     if(!exisitingUser){       
         // saving data
         const newUser = new userModel({
@@ -81,11 +80,11 @@ app.post('/signup',async (req,res)=> {
 
 // 2. login
 app.post('/login', async (req, res) => {
-    const data = req.body
-    const password = data.password
+    const email = req.body.email
+    const password = req.body.password
 
     // if data is okay
-    if( data.email === undefined || data.password ===undefined){
+    if( email === undefined || password ===undefined){
         res.status(400).json({
             message: 'Please provide email and password'
         })
@@ -95,12 +94,11 @@ app.post('/login', async (req, res) => {
     // login if user in db
     try{
         const exisitingUser = await userModel.findOne({
-            email:data.email,
-            
+            email:email
         })
         if (!exisitingUser){
             res.status(404).json({
-                message:'invalid email'
+                message:'invalid email or password'
             })
         }
         const passwordMatch = await bcrypt.compare(password, exisitingUser.password);
@@ -108,18 +106,49 @@ app.post('/login', async (req, res) => {
             res.status(401).json({
                 message: 'authentication failed'
             })
-        }else{
-            res.status(200).json({
-                message: 'successfully logged in'
+        }
+        // }else{
+        //     res.status(200).json({
+        //         message: 'successfully logged in'
+        //     })
+        // }
+        const token = jwt.sign({ userId:exisitingUser._id}, 'authsystems', {expiresIn:'1h',});
+        res.status(200).json({token, message:'successfully logged in'});
+        }catch(err){
+            res.status(500).json({
+                message: "login failed",
+                error: err
             })
         }
-        const token = jwt.sign({ userId:exisitingUser._id}, 'your-secret-key', {expiresIn:'1h',});
-        // res.status(200).json({token});
-    }catch(err){
-        res.status(500).json({error: 'login failed'})
-    }
     
 })
+
+// auth middleware
+function verifyToken(req, res, next){
+    const token = req.header('Authorization')
+    if(!token){
+        res.status(401).json({
+            message:'access denied, please signup or login'
+        })
+    }
+    try{
+        const decoded = jwt.verify(token,'authsystems' )
+        req.userId = decoded.userId
+        console.log('authorized', decoded);
+        next();
+    }catch(err){
+        res.status(401).json({
+            error: 'invalid token'
+        })
+    }
+}
+
+app.get('/', verifyToken, (req, res) => {
+    res.status(200).json({
+        message: 'protected route accessed'
+    })
+})
+// token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NTk0MDljYTM0MmI0ZTc2ZTYwM2MxODAiLCJpYXQiOjE3MDQyNzI3MTgsImV4cCI6MTcwNDI3NjMxOH0.yWXypc33U8ovkWoR9auobr7UQVCPP1BsYLPb-JtFeXE"
 
 // 3. Create task API
 app.post('/addTask', async (req, res) => {
@@ -311,7 +340,20 @@ app.get('/task-user', async (req,res) => {
     }
 })
 
-// auth middleware
-function verifyToken(req, res, next){
-    const token = req.header('Authorization')
-}
+
+
+// 9. delete account
+app.delete('/deleteaccount/:id', async(req, res) => {
+    const id = req.params.id
+    try{
+        await userModel.findByIdAndDelete(id)
+        res.status(200).json({
+            message:'user account deleted'
+        })
+    }catch(err){
+        res.status(400).json({
+            error: err
+        })
+    }
+})
+
